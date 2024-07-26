@@ -1,0 +1,96 @@
+function [] = plotPointCloudWithBoxes(ptCloudOut,handles,ax)
+
+    %%%%%%%%%%%%%%%%%%%%%新修改的%%%%%%%%%%%%%%%%%%%%%%%%
+    axes(ax); % Set the current axes to ax
+    %%%%%%%%%%%%%%%%%%%%%新修改的%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % Laden von Punktwolkenkoordinaten und Erzeugen von Punktwolkendateien
+    
+    % distThreshold = 0.15; % Entfernungsschwellenwerte festlegen
+    sliderValue = handles.distThreshold;
+    ptCloud = ptCloudOut;
+    [labels,numClusters] = pcsegdist(ptCloud,distThreshold);
+    labelColorIndex = labels;
+
+    %hCuboid = figure;%这个注释一会要撤回来
+    
+    % panel = uipanel('Parent',ax.Parent,'BackgroundColor',[0 0 0]); %这里的ax.parent理应是hCuboid
+    % ax = axes('Parent',panel,'Color',[0 0 0]);
+    ax.Color = [0 0 0]; % Set the axes background color to black
+    pcshow(ptCloud,'Parent',ax)
+    title('Boxes')
+    hold on
+    outer_vertices = [inf, inf, inf; -inf, -inf, -inf];
+    for i = 1:numClusters
+        idx = find(labels == i);
+        model = pcfitcuboid(ptCloud, idx);
+        % plot(model)
+    
+        points = getCornerPoints(model);
+        % Ermitteln der Höchst- und Mindestwerte der x-, y- und z-Koordinaten
+        min_x = min(points(:, 1));
+        max_x = max(points(:, 1));
+        min_y = min(points(:, 2));
+        max_y = max(points(:, 2));
+        min_z = min(points(:, 3));
+        max_z = max(points(:, 3));
+        diagonal_size = sqrt((max_x-min_x)^2+(max_y-min_y)^2+(max_z-min_z)^2); 
+        if diagonal_size < 0.4
+            continue
+        end
+        outer_vertices(1, :) = min(outer_vertices(1, :), [min_x, min_y, min_z]);
+        outer_vertices(2, :) = max(outer_vertices(2, :), [max_x, max_y, max_z]);
+        % Scheitelpunkte erstellen
+        vertices = [min_x, min_y, min_z;
+                   max_x, min_y, min_z;
+                   max_x, max_y, min_z;
+                   min_x, max_y, min_z;
+                   min_x, min_y, max_z;
+                   max_x, min_y, max_z;
+                   max_x, max_y, max_z;
+                   min_x, max_y, max_z;];
+        faces = [1 2 3 4; 2 6 7 3; 6 5 8 7; 5 1 4 8; 4 3 7 8; 1 2 6 5];
+    
+        % Ein Patch-Objekt für jede Fläche erstellen
+        for j = 1:size(faces, 1)
+            face = faces(j, :);
+            patch('Vertices', vertices, 'Faces', face, 'Facecolor', [0.85 0.65 0], 'FaceAlpha', 0.5)
+        end
+    
+        % Anzeigen
+        drawnow;
+        axis on
+        xlabel("X")
+        ylabel("Y")
+        zlabel("Z")
+    end
+        % Extraktion von Koordinateninformationen aus Punktwolkendaten
+        point = outer_vertices;
+        
+        % Berechnung des Begrenzungsrahmens für Punktwolkendaten
+        bbox = [min(point); max(point)];
+        
+        % Extraktion der minimalen und maximalen Koordinaten des Begrenzungsrahmens
+        minCoord = bbox(1, :);
+        maxCoord = bbox(2, :);
+        
+        % Berechnung der Seitenlängen
+        length = maxCoord(1) - minCoord(1);
+        width = maxCoord(2) - minCoord(2);
+        height = maxCoord(3) - minCoord(3);
+      
+        % Zeichnen der Seiten eines Rechtecks
+        plotcube([length width height], minCoord, 0.3, [1 0 0]);
+         
+        % Einstellung des Achsbereichs
+        xlim([min(point(:,1))-0.2 max(point(:,1))+0.2]);
+        ylim([min(point(:,2))-0.2 max(point(:,2))+0.2]);
+        zlim([min(point(:,3))-0.2 max(point(:,3))+0.2]);
+        drawnow
+        hold off
+
+
+end
+
+
+
